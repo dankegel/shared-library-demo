@@ -1,0 +1,30 @@
+#!/bin/sh
+# Demonstrate use of rpath with meson
+set -e
+set -x
+
+# Final installed location of shared libraries and binary
+PREFIX=`pwd`/prefix
+LIBDIR=$PREFIX/lib
+BINDIR=$PREFIX/bin
+rm -rf $PREFIX
+
+rm -rf btmp
+mkdir btmp
+cd btmp
+# You can't just say e.g. --runpath "$PREFIX"/lib to add an rpath; you have to modify meson.build.
+# See https://github.com/mesonbuild/meson/issues/2567
+meson .. --prefix "$PREFIX"
+ninja -v
+ninja install
+
+readelf -d x | grep RUNPATH
+readelf -d "$BINDIR"/x | grep RUNPATH
+
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm libfoo.so
+rm x
+
+# Finally, show where the app would find its libraries, and run it.
+ldd "${BINDIR}"/x
+"${BINDIR}"/x
