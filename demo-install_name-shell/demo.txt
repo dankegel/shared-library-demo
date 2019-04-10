@@ -1,0 +1,30 @@
+#!/bin/sh
+# Demonstrate use of -install_name on macosx to link to a library
+# before it's moved into its final location
+# Without cmake
+set -e
+set -x
+
+# Final installed location of shared libraries
+LIBDIR=`pwd`/lib
+rm -rf $LIBDIR
+mkdir -p $LIBDIR
+
+# Build the shared library, and set its install_name to its final location
+gcc -shared foo.c -install_name $LIBDIR/foo.so -o foo.so
+otool -D foo.so
+
+# Build the executable that uses the shared library
+gcc x.c foo.so
+
+# Install the library into its final location
+cp foo.so $LIBDIR 
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm foo.so
+
+# Put the binary into the bin dir
+mkdir -p bin
+cp a.out bin
+
+# Finally, run the app and show where it found its libraries
+DYLD_PRINT_LIBRARIES=1 bin/a.out

@@ -1,0 +1,66 @@
+#!/bin/sh
+# Demonstrate use of -install_name on macosx to link to a library
+# before it's moved into its final location
+# with an intermediate DESTDIR as described at 
+# http://www.gnu.org/prep/standards/html_node/DESTDIR.html
+# With cmake
+set -e
+set -x
+
+# Intermediate destination while preparing package
+
+DESTDIR="`pwd`"/staging
+rm -rf "$DESTDIR"
+
+# Final installed location of shared libraries
+PREFIX="`pwd`"/installed
+rm -rf "$PREFIX"
+LIBDIR="$PREFIX"/lib
+mkdir -p "$LIBDIR"
+BINDIR="$PREFIX"/bin
+mkdir -p "$BINDIR"
+
+rm -rf btmp
+mkdir btmp
+cd btmp
+cmake -DCMAKE_INSTALL_PREFIX:PATH="$PREFIX" -DDESTDIR:PATH="$DESTDIR" ..
+
+# To watch what processes get executed during the make, do
+#   sudo /usr/bin/newproc.d > newproc.log
+# in another window.  It's very informative.
+
+make VERBOSE=1
+make install VERBOSE=1
+
+# Now simulate the final install done later by dpkg.  Don't run this demo as root!
+rm -rf "$PREFIX"
+cp -a "$DESTDIR$PREFIX" "$PREFIX"
+
+# Now do
+#   grep install_name_tool newproc.log
+# to see how cmake used install_name_tool.
+
+# Compare the library in the build and the install area
+echo Build area install_name:
+otool -D libfoo.dylib
+echo Final install area install_name:
+otool -D "$LIBDIR"/libfoo.dylib
+
+# Compare the executable in the build and the install area
+echo Build area shared library references:
+otool -L x
+echo Final install area shared library references:
+otool -L "$BINDIR"/x
+
+# Try running the binary from the build area
+# This works, since in the build area, cmake has arranged for the library's install_name to point to the build area
+DYLD_PRINT_LIBRARIES=1 ./x
+
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm libfoo.dylib
+
+# Try running the binary from the install area
+# This works, since in the install area, cmake's install machinery
+# has arranged for the library's install_name to point to the install
+# area, and for the executable to refer to the library in the install area.
+DYLD_PRINT_LIBRARIES=1 "$BINDIR"/x

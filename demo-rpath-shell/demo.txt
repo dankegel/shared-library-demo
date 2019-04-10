@@ -1,0 +1,32 @@
+#!/bin/sh
+# Demonstrate use of rpath on macosx
+set -e
+set -x
+
+# Final installed location of shared libraries
+LIBDIR=`pwd`/lib
+rm -rf $LIBDIR
+mkdir -p $LIBDIR
+
+# Build the shared library
+gcc -shared foo.c -install_name @rpath/foo.so -o foo.so
+#gcc -shared foo.c -o foo.so   # this doesn't work, dyld refuses to load it via rpath
+otool -D foo.so
+cp foo.so $LIBDIR 
+
+# Build the executable that uses the shared library, and show the rpath.
+gcc -Wl,-rpath $LIBDIR x.c foo.so
+otool -l a.out | grep -A2 RPATH
+
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm foo.so
+
+# Finally, run the app and show where it found its libraries
+DYLD_PRINT_LIBRARIES=1 ./a.out
+
+# Bonus round: verify that you can use such a library without rpath, too.
+# This can't work, see
+# https://developer.apple.com/library/mac/documentation/developertools/conceptual/dynamiclibraries/100-Articles/RunpathDependentLibraries.html
+# If you think you need it, see ../demo6, that was what I needed.
+#gcc x.c $LIBDIR/foo.so
+#DYLD_PRINT_LIBRARIES=1 ./a.out

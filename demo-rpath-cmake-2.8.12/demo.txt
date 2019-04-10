@@ -1,0 +1,26 @@
+#!/bin/sh
+# Demonstrate use of rpath on macosx with cmake (requires cmake-2.8.12, untested)
+set -e
+set -x
+
+# Final installed location of shared libraries
+LIBDIR=`pwd`/lib
+rm -rf $LIBDIR
+mkdir -p $LIBDIR
+
+rm -rf btmp
+mkdir btmp
+cd btmp
+cmake ..
+make VERBOSE=1
+
+otool -D libfoo.dylib
+cp libfoo.dylib $LIBDIR 
+
+otool -l x | grep -A2 RPATH
+
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm libfoo.dylib
+
+# Finally, run the app and show where it found its libraries
+DYLD_PRINT_LIBRARIES=1 ./x

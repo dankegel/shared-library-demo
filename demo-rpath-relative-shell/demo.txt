@@ -1,0 +1,30 @@
+#!/bin/sh
+# Demonstrate use of relative rpath on macosx
+# It's a wee bit different than Solaris or Linux
+set -e
+set -x
+
+# Final installed location of shared libraries
+LIBDIR=`pwd`/lib
+rm -rf $LIBDIR
+mkdir -p $LIBDIR
+
+# Build the shared library
+gcc -shared foo.c -install_name @rpath/lib/foo.so -o foo.so
+otool -D foo.so
+cp foo.so $LIBDIR 
+
+# Build the executable that uses the shared library, set rpath to the common
+# parent of bin and lib, and show the rpath.
+gcc -Wl,-rpath,@loader_path/.. x.c foo.so
+otool -l a.out | grep -A2 RPATH
+
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm foo.so
+
+# Put the binary into the bin dir, where ../lib actually points to the library
+mkdir -p bin
+cp a.out bin
+
+# Finally, run the app and show where it found its libraries
+DYLD_PRINT_LIBRARIES=1 bin/a.out

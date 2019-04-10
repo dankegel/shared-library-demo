@@ -1,0 +1,27 @@
+#!/bin/sh
+# Demonstrate use of DYLD_LIBRARY_PATH on macosx
+set -e
+set -x
+
+# Final installed location of shared libraries
+LIBDIR=`pwd`/lib
+rm -rf $LIBDIR
+mkdir -p $LIBDIR
+
+# Build the shared library
+gcc -shared foo.c -o foo.so
+otool -D foo.so
+cp foo.so $LIBDIR 
+
+# Build the executable that uses the shared library
+gcc x.c foo.so
+
+# Remove the shared library from the build area, so it can only be found in $LIBDIR
+rm foo.so
+
+# Put the binary into the bin dir
+mkdir -p bin
+cp a.out bin
+
+# Finally, run the app and show where it found its libraries
+DYLD_LIBRARY_PATH=$LIBDIR DYLD_PRINT_LIBRARIES=1 bin/a.out
