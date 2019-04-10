@@ -3,24 +3,27 @@
 set -e
 set -x
 
-# Final installed location of shared libraries
-LIBDIR=`pwd`/lib
-rm -rf $LIBDIR
-mkdir -p $LIBDIR
+# Final installed location of shared libraries and binary
+PREFIX=`pwd`/prefix
+LIBDIR=$PREFIX/lib
+BINDIR=$PREFIX/bin
+rm -rf $PREFIX
 
 rm -rf btmp
 mkdir btmp
 cd btmp
-cmake ..
+cmake .. -DCMAKE_INSTALL_PREFIX="$PREFIX"
 make VERBOSE=1
+make install
 
 otool -D libfoo.dylib
-cp libfoo.dylib $LIBDIR 
 
-otool -l x | grep -A2 RPATH
+otool -l x | grep -E -A2 'RPATH|LC_LOAD_DYLIB'
+otool -l "$BINDIR"/x | grep -E -A2 'RPATH|LC_LOAD_DYLIB'
 
 # Remove the shared library from the build area, so it can only be found in $LIBDIR
 rm libfoo.dylib
+rm x
 
 # Finally, run the app and show where it found its libraries
-DYLD_PRINT_LIBRARIES=1 ./x
+DYLD_PRINT_LIBRARIES=1 "${BINDIR}"/x
